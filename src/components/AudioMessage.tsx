@@ -35,7 +35,7 @@ export default function AudioMessage({ uri, durationMillis, mine }: Props) {
   return (
     <View style={styles.row}>
       <TouchableOpacity style={[styles.iconButton, mine ? styles.mineButton : styles.theirButton]} onPress={togglePlay}>
-        <Ionicons name={status.playing ? "pause" : "play"} size={18} color={mine ? "#082f49" : "#e5eefb"} />
+        <Ionicons name={status.playing ? "pause" : "play"} size={18} color="#FFFFFF" />
       </TouchableOpacity>
       <View style={styles.wave}>
         <View style={[styles.bar, { height: 14 }]} />
@@ -44,7 +44,7 @@ export default function AudioMessage({ uri, durationMillis, mine }: Props) {
         <View style={[styles.bar, { height: 30 }]} />
         <View style={[styles.bar, { height: 16 }]} />
       </View>
-      <Text style={[styles.time, mine && styles.mineText]}>{formatMillis(durationMillis)}</Text>
+      <Text style={styles.time}>{formatMillis(durationMillis)}</Text>
       <TouchableOpacity style={styles.rateButton} onPress={toggleRate}>
         <Text style={styles.rateText}>{rate}x</Text>
       </TouchableOpacity>
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    minWidth: 230
+    minWidth: 220
   },
   iconButton: {
     width: 34,
@@ -67,10 +67,10 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   mineButton: {
-    backgroundColor: "#bae6fd"
+    backgroundColor: "#25D366"
   },
   theirButton: {
-    backgroundColor: "#334155"
+    backgroundColor: "#8696A0"
   },
   wave: {
     flexDirection: "row",
@@ -81,24 +81,21 @@ const styles = StyleSheet.create({
   bar: {
     width: 4,
     borderRadius: 2,
-    backgroundColor: "#38bdf8"
+    backgroundColor: "#8696A0"
   },
   time: {
-    color: "#94a3b8",
+    color: "#8696A0",
     fontSize: 12
-  },
-  mineText: {
-    color: "#075985"
   },
   rateButton: {
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#64748b",
+    borderColor: "#C4C4C4",
     paddingHorizontal: 7,
     paddingVertical: 3
   },
   rateText: {
-    color: "#e5eefb",
+    color: "#667781",
     fontWeight: "700",
     fontSize: 12
   }

@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncState from "../components/AsyncState";
 import { listenConversations, logoutUser } from "../services/firebaseChat";
@@ -40,9 +40,11 @@ export default function ConversationListScreen() {
     );
   }, [currentUser, setConversations]);
 
-  async function signOut() {
-    await logoutUser();
-    clearSession();
+  function signOut() {
+    Alert.alert("Sign out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Sign out", style: "destructive", onPress: async () => { await logoutUser(); clearSession(); } }
+    ]);
   }
 
   function renderItem({ item }: { item: Conversation }) {
@@ -61,24 +63,24 @@ export default function ConversationListScreen() {
             {queuedCount ? `${queuedCount} queued message${queuedCount > 1 ? "s" : ""}` : item.lastMessageText ?? "No messages yet"}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#64748b" />
+        <Ionicons name="chevron-forward" size={18} color="#C4C4C4" />
       </TouchableOpacity>
     );
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Chats</Text>
-          <Text style={styles.status}>{isOnline ? "Online" : "Offline queue active"}</Text>
+          <Text style={styles.title}>ChatApp</Text>
+          <Text style={styles.status}>{isOnline ? "Online" : "Offline"}</Text>
         </View>
         <View style={styles.headerButtons}>
           <TouchableOpacity style={styles.iconButton} onPress={() => setScreen("newChat")}>
-            <Ionicons name="create-outline" size={21} color="#e5eefb" />
+            <Ionicons name="create-outline" size={21} color="#FFFFFF" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} onPress={signOut}>
-            <Ionicons name="log-out-outline" size={21} color="#e5eefb" />
+            <Ionicons name="log-out-outline" size={21} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -94,8 +96,9 @@ export default function ConversationListScreen() {
           data={conversations}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} tintColor="#38bdf8" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} tintColor="#25D366" />}
           contentContainerStyle={styles.list}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       ) : null}
     </SafeAreaView>
@@ -105,7 +108,7 @@ export default function ConversationListScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#020617"
+    backgroundColor: "#F0F2F5"
   },
   header: {
     flexDirection: "row",
@@ -113,50 +116,55 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 18,
     paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1e293b"
+    backgroundColor: "#075E54"
   },
   title: {
-    color: "#e5eefb",
-    fontSize: 28,
+    color: "#FFFFFF",
+    fontSize: 22,
     fontWeight: "800"
   },
   status: {
-    color: "#94a3b8",
-    marginTop: 3
+    color: "#B2DFDB",
+    marginTop: 2,
+    fontSize: 12
   },
   headerButtons: {
     flexDirection: "row",
-    gap: 8
+    gap: 20
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: "#1e293b",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center"
   },
   list: {
-    paddingVertical: 8
+    paddingVertical: 0
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#E9EDEF",
+    marginLeft: 78
   },
   item: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 14
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#FFFFFF"
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: "#164e63",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#DFE5E7",
     alignItems: "center",
     justifyContent: "center"
   },
   avatarText: {
-    color: "#e5eefb",
+    color: "#075E54",
     fontSize: 20,
     fontWeight: "800"
   },
@@ -164,12 +172,13 @@ const styles = StyleSheet.create({
     flex: 1
   },
   name: {
-    color: "#e5eefb",
+    color: "#111B21",
     fontSize: 16,
-    fontWeight: "800"
+    fontWeight: "700"
   },
   preview: {
-    color: "#94a3b8",
-    marginTop: 4
+    color: "#667781",
+    marginTop: 3,
+    fontSize: 14
   }
 });

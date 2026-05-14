@@ -13,7 +13,7 @@ export default function AsyncState({ loading, error, empty, emptyTitle, emptyBod
   if (loading) {
     return (
       <View style={styles.wrap}>
-        <ActivityIndicator color="#38bdf8" size="large" />
+        <ActivityIndicator color="#25D366" size="large" />
         <Text style={styles.body}>Loading...</Text>
       </View>
     );
@@ -26,7 +26,7 @@ export default function AsyncState({ loading, error, empty, emptyTitle, emptyBod
         <Text style={styles.body}>{error}</Text>
         {onRetry ? (
           <TouchableOpacity style={styles.button} onPress={onRetry}>
-            <Text style={styles.buttonText}>Reload</Text>
+            <Text style={styles.buttonText}>Try again</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -53,27 +53,28 @@ const styles = StyleSheet.create({
     padding: 28
   },
   title: {
-    color: "#e5eefb",
+    color: "#111B21",
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 8,
     textAlign: "center"
   },
   body: {
-    color: "#94a3b8",
+    color: "#667781",
     fontSize: 14,
     textAlign: "center",
-    lineHeight: 20
+    lineHeight: 20,
+    marginTop: 6
   },
   button: {
     marginTop: 16,
-    backgroundColor: "#38bdf8",
-    paddingHorizontal: 18,
+    backgroundColor: "#25D366",
+    paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 8
+    borderRadius: 20
   },
   buttonText: {
-    color: "#082f49",
-    fontWeight: "800"
+    color: "#FFFFFF",
+    fontWeight: "700"
   }
 });

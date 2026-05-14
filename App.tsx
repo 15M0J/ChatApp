@@ -47,7 +47,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       {screen === "auth" && <AuthScreen />}
       {screen === "conversations" && <ConversationListScreen />}
       {screen === "newChat" && <NewChatScreen />}

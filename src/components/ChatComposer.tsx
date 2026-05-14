@@ -63,26 +63,33 @@ export default function ChatComposer({ disabled, uploading, editingText, onSendT
     <View style={styles.wrap}>
       {editingText !== null ? (
         <TouchableOpacity style={styles.iconButton} onPress={onCancelEdit}>
-          <Ionicons name="close" size={22} color="#e5eefb" />
+          <Ionicons name="close" size={22} color="#667781" />
         </TouchableOpacity>
       ) : (
         <TouchableOpacity style={styles.iconButton} onPress={onPickMedia} disabled={disabled || uploading}>
-          {uploading ? <ActivityIndicator color="#38bdf8" /> : <Ionicons name="image" size={22} color="#e5eefb" />}
+          {uploading ? <ActivityIndicator color="#25D366" /> : <Ionicons name="attach" size={24} color="#8696A0" />}
         </TouchableOpacity>
       )}
       <TextInput
         value={text}
         onChangeText={changeText}
         placeholder={editingText !== null ? "Edit message" : "Message"}
-        placeholderTextColor="#64748b"
+        placeholderTextColor="#8696A0"
         style={styles.input}
         multiline
       />
-      <TouchableOpacity style={[styles.iconButton, isRecording && styles.recording]} onPress={toggleRecording} disabled={disabled || uploading || editingText !== null}>
-        <Ionicons name={isRecording ? "stop" : "mic"} size={22} color="#e5eefb" />
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.sendButton} onPress={submit} disabled={disabled || uploading}>
-        <Ionicons name="send" size={19} color="#082f49" />
+      <TouchableOpacity
+        style={[styles.micButton, isRecording && styles.micRecording]}
+        onPress={isRecording || !text.trim() ? toggleRecording : submit}
+        disabled={disabled || uploading || editingText !== null}
+      >
+        {isRecording ? (
+          <Ionicons name="stop" size={20} color="#FFFFFF" />
+        ) : text.trim() ? (
+          <Ionicons name="send" size={18} color="#FFFFFF" />
+        ) : (
+          <Ionicons name="mic" size={20} color="#FFFFFF" />
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -93,40 +100,38 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#1e293b",
-    backgroundColor: "#0f172a"
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    backgroundColor: "#F0F2F5"
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: "#1e293b",
+    width: 42,
+    height: 42,
     alignItems: "center",
     justifyContent: "center"
-  },
-  recording: {
-    backgroundColor: "#dc2626"
   },
   input: {
     flex: 1,
     maxHeight: 120,
-    minHeight: 40,
-    borderRadius: 8,
-    backgroundColor: "#111827",
-    color: "#e5eefb",
-    paddingHorizontal: 12,
+    minHeight: 42,
+    borderRadius: 21,
+    backgroundColor: "#FFFFFF",
+    color: "#111B21",
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    fontSize: 15
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: "#E9EDEF"
   },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: "#38bdf8",
+  micButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#25D366",
     alignItems: "center",
     justifyContent: "center"
+  },
+  micRecording: {
+    backgroundColor: "#EA0038"
   }
 });

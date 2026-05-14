@@ -171,11 +171,11 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={["top"]}>
       <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.iconButton} onPress={() => setSelectedConversationId(null)}>
-            <Ionicons name="arrow-back" size={22} color="#e5eefb" />
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerBody}>
             <Text style={styles.title} numberOfLines={1}>{other?.displayName ?? "Chat"}</Text>
@@ -186,24 +186,24 @@ export default function ChatScreen() {
             </View>
           </View>
           <TouchableOpacity style={styles.iconButton} onPress={toggleSearch}>
-            <Ionicons name={searchVisible ? "close" : "search"} size={20} color="#e5eefb" />
+            <Ionicons name={searchVisible ? "close" : "search"} size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
         {searchVisible ? (
           <View style={styles.searchWrap}>
-            <Ionicons name="search" size={16} color="#64748b" />
+            <Ionicons name="search" size={16} color="#8696A0" />
             <TextInput
               value={searchTerm}
               onChangeText={setSearchTerm}
               placeholder="Search in chat"
-              placeholderTextColor="#64748b"
+              placeholderTextColor="#8696A0"
               style={styles.searchInput}
               autoFocus
             />
             {searchTerm ? (
               <TouchableOpacity onPress={() => setSearchTerm("")}>
-                <Ionicons name="close-circle" size={18} color="#64748b" />
+                <Ionicons name="close-circle" size={18} color="#8696A0" />
               </TouchableOpacity>
             ) : null}
           </View>
@@ -253,6 +253,7 @@ export default function ChatScreen() {
               ) : null
             }
             contentContainerStyle={styles.messages}
+            style={styles.messageList}
           />
         ) : null}
 
@@ -275,7 +276,7 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#020617"
+    backgroundColor: "#075E54"
   },
   keyboard: {
     flex: 1
@@ -286,14 +287,12 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1e293b"
+    backgroundColor: "#075E54"
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: "#1e293b",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center"
   },
@@ -302,7 +301,7 @@ const styles = StyleSheet.create({
     gap: 2
   },
   title: {
-    color: "#e5eefb",
+    color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "700"
   },
@@ -315,13 +314,13 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: "#475569"
+    backgroundColor: "#B2DFDB"
   },
   dotOnline: {
-    backgroundColor: "#22c55e"
+    backgroundColor: "#25D366"
   },
   statusText: {
-    color: "#64748b",
+    color: "#B2DFDB",
     fontSize: 12
   },
   searchWrap: {
@@ -329,31 +328,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginHorizontal: 12,
-    marginTop: 8,
-    marginBottom: 4,
-    paddingHorizontal: 10,
+    marginTop: 4,
+    marginBottom: 6,
+    paddingHorizontal: 12,
     height: 38,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#1e293b",
-    backgroundColor: "#111827"
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF"
   },
   searchInput: {
     flex: 1,
-    color: "#e5eefb",
+    color: "#111B21",
     fontSize: 14
   },
+  messageList: {
+    backgroundColor: "#E8EDD4"
+  },
   messages: {
-    paddingTop: 6,
+    paddingTop: 8,
     paddingBottom: 10
   },
   typingRow: {
     paddingHorizontal: 12,
-    paddingTop: 8
+    paddingTop: 6
   },
   typingBubble: {
     alignSelf: "flex-start",
-    backgroundColor: "#1e293b",
+    backgroundColor: "#FFFFFF",
     borderRadius: 18,
     borderBottomLeftRadius: 4,
     paddingHorizontal: 14,

@@ -26,12 +26,10 @@ function formatTime(ms?: number) {
   return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function ReceiptIcon({ status, mine }: { status?: ReceiptStatus; mine: boolean }) {
-  const seenColor = mine ? "#075985" : "#0ea5e9";
-  const defaultColor = mine ? "#93c5d8" : "#64748b";
-  if (status === "seen") return <Ionicons name="checkmark-done" size={13} color={seenColor} />;
-  if (status === "delivered") return <Ionicons name="checkmark-done" size={13} color={defaultColor} />;
-  return <Ionicons name="checkmark" size={13} color={defaultColor} />;
+function ReceiptIcon({ status }: { status?: ReceiptStatus }) {
+  if (status === "seen") return <Ionicons name="checkmark-done" size={14} color="#53BDEB" />;
+  if (status === "delivered") return <Ionicons name="checkmark-done" size={14} color="#8696A0" />;
+  return <Ionicons name="checkmark" size={14} color="#8696A0" />;
 }
 
 function HighlightedText({ text, term, mine }: { text: string; term: string; mine: boolean }) {
@@ -100,7 +98,7 @@ export default function MessageBubble(props: Props) {
             <Image source={{ uri: message.thumbnailUrl || message.mediaUrl }} style={styles.thumbnail} />
             {message.type === "video" ? (
               <View style={styles.playOverlay}>
-                <Ionicons name="play" size={26} color="#e5eefb" />
+                <Ionicons name="play" size={26} color="#FFFFFF" />
               </View>
             ) : null}
           </TouchableOpacity>
@@ -113,10 +111,10 @@ export default function MessageBubble(props: Props) {
           </View>
         ) : null}
         <View style={styles.metaRow}>
-          {message.editedAt && !deleted ? <Text style={[styles.meta, mine && styles.mineMeta]}>edited</Text> : null}
-          {message.localState ? <Text style={[styles.meta, mine && styles.mineMeta]}>{message.localState}</Text> : null}
-          <Text style={[styles.meta, mine && styles.mineMeta]}>{formatTime(message.createdAt)}</Text>
-          {mine && !message.localState ? <ReceiptIcon status={otherStatus} mine={mine} /> : null}
+          {message.editedAt && !deleted ? <Text style={styles.meta}>edited</Text> : null}
+          {message.localState ? <Text style={styles.meta}>{message.localState}</Text> : null}
+          <Text style={styles.meta}>{formatTime(message.createdAt)}</Text>
+          {mine && !message.localState ? <ReceiptIcon status={otherStatus} /> : null}
         </View>
       </View>
     </TouchableOpacity>
@@ -127,7 +125,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     justifyContent: "flex-start",
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     marginBottom: 1
   },
   mineRow: {
@@ -135,53 +133,58 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: "80%",
-    paddingHorizontal: 12,
-    paddingVertical: 8
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1
   },
   mineBubble: {
-    backgroundColor: "#38bdf8"
+    backgroundColor: "#D9FDD3"
   },
   theirBubble: {
-    backgroundColor: "#1e293b"
+    backgroundColor: "#FFFFFF"
   },
   deletedBubble: {
     opacity: 0.6
   },
   sender: {
-    color: "#38bdf8",
+    color: "#075E54",
     fontSize: 12,
     marginBottom: 3,
     fontWeight: "700"
   },
   messageText: {
-    color: "#e5eefb",
+    color: "#111B21",
     fontSize: 15,
     lineHeight: 22
   },
   mineText: {
-    color: "#082f49"
+    color: "#111B21"
   },
   highlight: {
-    backgroundColor: "#facc15",
-    color: "#082f49"
+    backgroundColor: "#FAE68A",
+    color: "#111B21"
   },
   thumbnail: {
     width: 230,
     height: 170,
     borderRadius: 10,
-    backgroundColor: "#0f172a"
+    backgroundColor: "#E9EDEF"
   },
   playOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(2, 6, 23, 0.28)"
+    backgroundColor: "rgba(0,0,0,0.22)"
   },
   reactions: {
     flexDirection: "row",
     alignSelf: "flex-start",
     gap: 4,
-    backgroundColor: "rgba(15, 23, 42, 0.32)",
+    backgroundColor: "rgba(0,0,0,0.06)",
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -194,14 +197,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     alignItems: "center",
-    gap: 4,
-    marginTop: 4
+    gap: 3,
+    marginTop: 3
   },
   meta: {
-    color: "#64748b",
+    color: "#8696A0",
     fontSize: 11
-  },
-  mineMeta: {
-    color: "#075985"
   }
 });
