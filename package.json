@@ -1,0 +1,37 @@
+{
+  "name": "stage-5-chat-app",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "build": "expo export",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "*",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/netinfo": "11.4.1",
+    "expo": "~55.0.0",
+    "expo-av": "*",
+    "expo-constants": "*",
+    "expo-image-manipulator": "*",
+    "expo-image-picker": "*",
+    "expo-status-bar": "*",
+    "expo-video-thumbnails": "*",
+    "firebase": "^12.6.0",
+    "react": "19.2.0",
+    "react-native": "0.83.4",
+    "react-native-compressor": "^1.13.0",
+    "react-native-safe-area-context": "~5.6.2",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.0",
+    "babel-preset-expo": "*",
+    "typescript": "~5.9.2"
+  }
+}
