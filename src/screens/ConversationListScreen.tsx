@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncState from "../components/AsyncState";
 import { listenConversations, logoutUser } from "../services/firebaseChat";
 import { useChatStore } from "../store/chatStore";
+import { friendlyError } from "../utils/friendlyError";
 import type { Conversation } from "../types";
 
 export default function ConversationListScreen() {
@@ -32,7 +33,7 @@ export default function ConversationListScreen() {
         setError(null);
       },
       (err) => {
-        setError(err.message);
+        setError(friendlyError(err));
         setLoading(false);
         setRefreshing(false);
       }

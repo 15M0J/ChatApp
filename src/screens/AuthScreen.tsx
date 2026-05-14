@@ -3,6 +3,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, Te
 import { SafeAreaView } from "react-native-safe-area-context";
 import { loginUser, registerUser } from "../services/firebaseChat";
 import { useChatStore } from "../store/chatStore";
+import { friendlyError } from "../utils/friendlyError";
 
 export default function AuthScreen() {
   const setCurrentUser = useChatStore((state) => state.setCurrentUser);
@@ -21,7 +22,7 @@ export default function AuthScreen() {
         mode === "register" ? await registerUser(email, password, displayName || email.split("@")[0]) : await loginUser(email, password);
       setCurrentUser(profile);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to continue.");
+      setError(friendlyError(err));
     } finally {
       setLoading(false);
     }
@@ -31,8 +32,8 @@ export default function AuthScreen() {
     <SafeAreaView style={styles.screen}>
       <KeyboardAvoidingView style={styles.wrap} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={styles.header}>
-          <Text style={styles.title}>Stage 5 Chat</Text>
-          <Text style={styles.subtitle}>Realtime Firebase messaging</Text>
+          <Text style={styles.title}>ChatApp</Text>
+          <Text style={styles.subtitle}>Realtime messaging</Text>
         </View>
         {mode === "register" ? (
           <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Display name" placeholderTextColor="#64748b" style={styles.input} />

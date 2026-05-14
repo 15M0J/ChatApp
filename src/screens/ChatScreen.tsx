@@ -20,6 +20,7 @@ import {
 } from "../services/firebaseChat";
 import { useChatStore } from "../store/chatStore";
 import type { ChatMessage } from "../types";
+import { friendlyError } from "../utils/friendlyError";
 
 export default function ChatScreen() {
   const currentUser = useChatStore((state) => state.currentUser);
@@ -36,6 +37,7 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchVisible, setSearchVisible] = useState(false);
   const [searching, setSearching] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
@@ -52,10 +54,10 @@ export default function ChatScreen() {
         setMessages(items);
         setLoading(false);
         setError(null);
-        setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+        setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 80);
       },
       (err) => {
-        setError(err.message);
+        setError(friendlyError(err));
         setLoading(false);
       }
     );
@@ -66,6 +68,20 @@ export default function ChatScreen() {
     const handle = setTimeout(() => setSearching(false), 220);
     return () => clearTimeout(handle);
   }, [searchTerm]);
+
+  useEffect(() => {
+    if (otherTyping) {
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation?.typing]);
+
+  function toggleSearch() {
+    setSearchVisible((v) => {
+      if (v) setSearchTerm("");
+      return !v;
+    });
+  }
 
   const localQueuedMessages = useMemo<ChatMessage[]>(() => {
     if (!selectedConversationId) return [];
@@ -115,6 +131,7 @@ export default function ChatScreen() {
     }
 
     await sendTextNow(pending, conversation.members);
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
   }
 
   async function handleTyping(isTyping: boolean) {
@@ -128,7 +145,7 @@ export default function ChatScreen() {
     try {
       await pickAndSendMedia(conversation, currentUser);
     } catch (err) {
-      Alert.alert("Media failed", err instanceof Error ? err.message : "Unable to send media.");
+      Alert.alert("Couldn't send media", friendlyError(err));
     } finally {
       setUploading(false);
     }
@@ -140,7 +157,7 @@ export default function ChatScreen() {
     try {
       await sendAudioMessage(conversation, currentUser, uri, durationMillis);
     } catch (err) {
-      Alert.alert("Audio failed", err instanceof Error ? err.message : "Unable to send audio.");
+      Alert.alert("Couldn't send audio", friendlyError(err));
     } finally {
       setUploading(false);
     }
@@ -161,27 +178,37 @@ export default function ChatScreen() {
             <Ionicons name="arrow-back" size={22} color="#e5eefb" />
           </TouchableOpacity>
           <View style={styles.headerBody}>
-            <Text style={styles.title}>{other?.displayName ?? "Chat"}</Text>
-            <View style={styles.presenceRow}>
-              <Text style={styles.status}>{isOnline ? "Realtime sync" : "Offline"}</Text>
-              {otherTyping ? (
-                <View style={styles.typingWrap}>
-                  <Text style={styles.status}>typing</Text>
-                  <AnimatedDots />
-                </View>
-              ) : null}
+            <Text style={styles.title} numberOfLines={1}>{other?.displayName ?? "Chat"}</Text>
+            <View style={styles.statusRow}>
+              <View style={[styles.dot, isOnline && styles.dotOnline]} />
+              <Text style={styles.statusText}>{isOnline ? "Online" : "Offline"}</Text>
+              {otherTyping ? <Text style={styles.statusText}>· typing</Text> : null}
             </View>
           </View>
+          <TouchableOpacity style={styles.iconButton} onPress={toggleSearch}>
+            <Ionicons name={searchVisible ? "close" : "search"} size={20} color="#e5eefb" />
+          </TouchableOpacity>
         </View>
-        <View style={styles.searchWrap}>
-          <Ionicons name="search" size={16} color="#64748b" />
-          <TextInput value={searchTerm} onChangeText={setSearchTerm} placeholder="Search in chat" placeholderTextColor="#64748b" style={styles.searchInput} />
-          {searchTerm ? (
-            <TouchableOpacity onPress={() => setSearchTerm("")}>
-              <Ionicons name="close" size={18} color="#94a3b8" />
-            </TouchableOpacity>
-          ) : null}
-        </View>
+
+        {searchVisible ? (
+          <View style={styles.searchWrap}>
+            <Ionicons name="search" size={16} color="#64748b" />
+            <TextInput
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              placeholder="Search in chat"
+              placeholderTextColor="#64748b"
+              style={styles.searchInput}
+              autoFocus
+            />
+            {searchTerm ? (
+              <TouchableOpacity onPress={() => setSearchTerm("")}>
+                <Ionicons name="close-circle" size={18} color="#64748b" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
+
         <AsyncState
           loading={loading || searching}
           error={error}
@@ -189,27 +216,46 @@ export default function ChatScreen() {
           emptyTitle={searchTerm ? "No matching messages" : "No messages yet"}
           emptyBody={searchTerm ? "Try another search term." : "Send the first message to start the conversation."}
         />
+
         {!loading && !error && visibleMessages.length > 0 ? (
           <FlatList
             ref={listRef}
             data={visibleMessages}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <MessageBubble
-                message={item}
-                currentUid={currentUser?.uid ?? ""}
-                otherUid={otherUid}
-                searchTerm={searchTerm}
-                onReact={(message, emoji) => currentUser && setReaction(message.conversationId, message.id, currentUser.uid, emoji)}
-                onEdit={setEditingMessage}
-                onDeleteForMe={(message) => currentUser && deleteMessageForMe(message.conversationId, message.id, currentUser.uid)}
-                onDeleteForEveryone={confirmDeleteForEveryone}
-                onOpenMedia={setViewerMessage}
-              />
-            )}
+            renderItem={({ item, index }) => {
+              const prev = index > 0 ? visibleMessages[index - 1] : null;
+              const next = index < visibleMessages.length - 1 ? visibleMessages[index + 1] : null;
+              const isFirst = !prev || prev.senderId !== item.senderId;
+              const isLast = !next || next.senderId !== item.senderId;
+              return (
+                <MessageBubble
+                  message={item}
+                  currentUid={currentUser?.uid ?? ""}
+                  otherUid={otherUid}
+                  searchTerm={searchTerm}
+                  isFirst={isFirst}
+                  isLast={isLast}
+                  onReact={(message, emoji) => currentUser && setReaction(message.conversationId, message.id, currentUser.uid, emoji)}
+                  onEdit={setEditingMessage}
+                  onDeleteForMe={(message) => currentUser && deleteMessageForMe(message.conversationId, message.id, currentUser.uid)}
+                  onDeleteForEveryone={confirmDeleteForEveryone}
+                  onOpenMedia={setViewerMessage}
+                />
+              );
+            }}
+            ListFooterComponent={
+              otherTyping ? (
+                <View style={styles.typingRow}>
+                  <View style={styles.typingBubble}>
+                    <AnimatedDots />
+                  </View>
+                </View>
+              ) : null
+            }
             contentContainerStyle={styles.messages}
           />
         ) : null}
+
         <ChatComposer
           disabled={!conversation || !currentUser}
           uploading={uploading}
@@ -237,9 +283,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#1e293b"
   },
@@ -252,36 +298,42 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   headerBody: {
-    flex: 1
+    flex: 1,
+    gap: 2
   },
   title: {
     color: "#e5eefb",
-    fontSize: 19,
-    fontWeight: "800"
+    fontSize: 17,
+    fontWeight: "700"
   },
-  presenceRow: {
-    minHeight: 22,
+  statusRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8
+    gap: 5
   },
-  status: {
-    color: "#94a3b8",
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#475569"
+  },
+  dotOnline: {
+    backgroundColor: "#22c55e"
+  },
+  statusText: {
+    color: "#64748b",
     fontSize: 12
-  },
-  typingWrap: {
-    flexDirection: "row",
-    alignItems: "center"
   },
   searchWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginHorizontal: 14,
-    marginVertical: 10,
+    marginHorizontal: 12,
+    marginTop: 8,
+    marginBottom: 4,
     paddingHorizontal: 10,
-    minHeight: 38,
-    borderRadius: 8,
+    height: 38,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: "#1e293b",
     backgroundColor: "#111827"
@@ -292,6 +344,19 @@ const styles = StyleSheet.create({
     fontSize: 14
   },
   messages: {
-    paddingVertical: 8
+    paddingTop: 6,
+    paddingBottom: 10
+  },
+  typingRow: {
+    paddingHorizontal: 12,
+    paddingTop: 8
+  },
+  typingBubble: {
+    alignSelf: "flex-start",
+    backgroundColor: "#1e293b",
+    borderRadius: 18,
+    borderBottomLeftRadius: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10
   }
 });
