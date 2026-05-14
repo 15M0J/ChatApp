@@ -41,7 +41,8 @@
         {
           "microphonePermission": "Record audio messages."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "firebaseApiKey": "AIzaSyAC_IlSwQopePYb2xI5RyF-DI2_DCKU7zw",

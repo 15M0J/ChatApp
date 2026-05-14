@@ -1,7 +1,6 @@
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import * as VideoThumbnails from "expo-video-thumbnails";
-import { Video as VideoCompressor } from "react-native-compressor";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -375,7 +374,8 @@ async function compressImage(uri: string) {
 }
 
 async function compressVideo(uri: string) {
-  const compressedUri = await VideoCompressor.compress(uri, {
+  const { Video } = await import("react-native-compressor");
+  const compressedUri = await Video.compress(uri, {
     compressionMethod: "auto"
   });
   return { uri: compressedUri, contentType: "video/mp4" };
