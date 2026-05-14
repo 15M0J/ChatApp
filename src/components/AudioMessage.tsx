@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Audio } from "expo-av";
-import { useEffect, useRef, useState } from "react";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { formatMillis } from "../utils/searchTokens";
 
@@ -11,51 +11,31 @@ type Props = {
 };
 
 export default function AudioMessage({ uri, durationMillis, mine }: Props) {
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const [playing, setPlaying] = useState(false);
+  const player = useAudioPlayer({ uri });
+  const status = useAudioPlayerStatus(player);
   const [rate, setRate] = useState(1);
 
-  useEffect(() => {
-    return () => {
-      soundRef.current?.unloadAsync();
-    };
-  }, []);
-
-  async function togglePlay() {
-    if (playing) {
-      await soundRef.current?.pauseAsync();
-      setPlaying(false);
+  function togglePlay() {
+    if (status.playing) {
+      player.pause();
       return;
     }
-
-    if (!soundRef.current) {
-      const { sound } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true, rate, shouldCorrectPitch: true },
-        (status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            setPlaying(false);
-          }
-        }
-      );
-      soundRef.current = sound;
-    } else {
-      await soundRef.current.setRateAsync(rate, true);
-      await soundRef.current.replayAsync();
+    if (status.didJustFinish) {
+      player.seekTo(0);
     }
-    setPlaying(true);
+    player.play();
   }
 
-  async function toggleRate() {
+  function toggleRate() {
     const nextRate = rate === 1 ? 2 : 1;
     setRate(nextRate);
-    await soundRef.current?.setRateAsync(nextRate, true);
+    player.setPlaybackRate(nextRate, "medium");
   }
 
   return (
     <View style={styles.row}>
       <TouchableOpacity style={[styles.iconButton, mine ? styles.mineButton : styles.theirButton]} onPress={togglePlay}>
-        <Ionicons name={playing ? "pause" : "play"} size={18} color={mine ? "#082f49" : "#e5eefb"} />
+        <Ionicons name={status.playing ? "pause" : "play"} size={18} color={mine ? "#082f49" : "#e5eefb"} />
       </TouchableOpacity>
       <View style={styles.wave}>
         <View style={[styles.bar, { height: 14 }]} />

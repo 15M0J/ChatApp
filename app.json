@@ -37,12 +37,13 @@
         }
       ],
       [
-        "expo-av",
+        "expo-audio",
         {
           "microphonePermission": "Record audio messages."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-video"
     ],
     "extra": {
       "firebaseApiKey": "AIzaSyAC_IlSwQopePYb2xI5RyF-DI2_DCKU7zw",

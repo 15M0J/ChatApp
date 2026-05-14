@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { ResizeMode, Video } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { Image, Modal, StyleSheet, TouchableOpacity, View } from "react-native";
 import type { ChatMessage } from "../types";
 
@@ -9,6 +9,11 @@ type Props = {
 };
 
 export default function MediaViewer({ message, onClose }: Props) {
+  const videoSource = message?.type === "video" && message.mediaUrl ? { uri: message.mediaUrl } : null;
+  const videoPlayer = useVideoPlayer(videoSource, (player) => {
+    player.play();
+  });
+
   return (
     <Modal visible={Boolean(message)} animationType="fade" transparent>
       <View style={styles.wrap}>
@@ -17,7 +22,7 @@ export default function MediaViewer({ message, onClose }: Props) {
         </TouchableOpacity>
         {message?.type === "image" && message.mediaUrl ? <Image source={{ uri: message.mediaUrl }} style={styles.media} resizeMode="contain" /> : null}
         {message?.type === "video" && message.mediaUrl ? (
-          <Video source={{ uri: message.mediaUrl }} style={styles.media} useNativeControls resizeMode={ResizeMode.CONTAIN} shouldPlay />
+          <VideoView player={videoPlayer} style={styles.media} nativeControls />
         ) : null}
       </View>
     </Modal>

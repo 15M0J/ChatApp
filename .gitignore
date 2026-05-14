@@ -12,5 +12,6 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 firebase-debug.log
+emulator-start.*.log
 .env
 .env.*

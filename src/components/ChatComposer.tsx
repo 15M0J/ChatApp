@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Audio } from "expo-av";
+import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from "expo-audio";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
@@ -16,7 +16,8 @@ type Props = {
 
 export default function ChatComposer({ disabled, uploading, editingText, onSendText, onChangeTyping, onPickMedia, onSendAudio, onCancelEdit }: Props) {
   const [text, setText] = useState("");
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -41,21 +42,21 @@ export default function ChatComposer({ disabled, uploading, editingText, onSendT
   }
 
   async function toggleRecording() {
-    if (recording) {
-      const status = await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      setRecording(null);
-      if (uri) onSendAudio(uri, status.durationMillis);
+    if (isRecording) {
+      const durationMillis = Math.round(recorder.currentTime * 1000);
+      await recorder.stop();
+      setIsRecording(false);
+      const uri = recorder.uri;
+      if (uri) onSendAudio(uri, durationMillis);
       return;
     }
 
-    const permission = await Audio.requestPermissionsAsync();
+    const permission = await requestRecordingPermissionsAsync();
     if (!permission.granted) return;
-    await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-    const nextRecording = new Audio.Recording();
-    await nextRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-    await nextRecording.startAsync();
-    setRecording(nextRecording);
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+    setIsRecording(true);
   }
 
   return (
@@ -77,8 +78,8 @@ export default function ChatComposer({ disabled, uploading, editingText, onSendT
         style={styles.input}
         multiline
       />
-      <TouchableOpacity style={[styles.iconButton, recording && styles.recording]} onPress={toggleRecording} disabled={disabled || uploading || editingText !== null}>
-        <Ionicons name={recording ? "stop" : "mic"} size={22} color="#e5eefb" />
+      <TouchableOpacity style={[styles.iconButton, isRecording && styles.recording]} onPress={toggleRecording} disabled={disabled || uploading || editingText !== null}>
+        <Ionicons name={isRecording ? "stop" : "mic"} size={22} color="#e5eefb" />
       </TouchableOpacity>
       <TouchableOpacity style={styles.sendButton} onPress={submit} disabled={disabled || uploading}>
         <Ionicons name="send" size={19} color="#082f49" />
