@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncState from "../components/AsyncState";
 import { createConversation, searchUsers } from "../services/firebaseChat";
 import { useChatStore } from "../store/chatStore";
+import { friendlyError } from "../utils/friendlyError";
 import type { UserProfile } from "../types";
 
 export default function NewChatScreen() {
@@ -30,7 +31,7 @@ export default function NewChatScreen() {
       try {
         setResults(await searchUsers(term, currentUser.uid));
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to search users.");
+        setError(friendlyError(err));
       } finally {
         setLoading(false);
       }
@@ -45,27 +46,27 @@ export default function NewChatScreen() {
       const conversationId = await createConversation(currentUser, profile);
       setSelectedConversationId(conversationId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to create chat.");
+      setError(friendlyError(err));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.iconButton} onPress={() => setScreen("conversations")}>
-          <Ionicons name="arrow-back" size={22} color="#e5eefb" />
+          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.title}>New chat</Text>
       </View>
       <View style={styles.searchWrap}>
-        <Ionicons name="search" size={18} color="#64748b" />
+        <Ionicons name="search" size={18} color="#8696A0" />
         <TextInput
           value={term}
           onChangeText={setTerm}
           placeholder="Search email or display name"
-          placeholderTextColor="#64748b"
+          placeholderTextColor="#8696A0"
           autoCapitalize="none"
           style={styles.searchInput}
         />
@@ -81,6 +82,7 @@ export default function NewChatScreen() {
         <FlatList
           data={results}
           keyExtractor={(item) => item.uid}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.item} onPress={() => startChat(item)}>
               <View style={styles.avatar}>
@@ -90,7 +92,7 @@ export default function NewChatScreen() {
                 <Text style={styles.name}>{item.displayName}</Text>
                 <Text style={styles.email}>{item.email}</Text>
               </View>
-              <Ionicons name="chatbubble-ellipses-outline" size={21} color="#38bdf8" />
+              <Ionicons name="chatbubble-ellipses-outline" size={20} color="#25D366" />
             </TouchableOpacity>
           )}
         />
@@ -102,64 +104,68 @@ export default function NewChatScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#020617"
+    backgroundColor: "#F0F2F5"
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 18,
+    gap: 14,
+    paddingHorizontal: 14,
     paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1e293b"
+    backgroundColor: "#075E54"
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: "#1e293b",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center"
   },
   title: {
-    color: "#e5eefb",
-    fontSize: 24,
-    fontWeight: "800"
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "700"
   },
   searchWrap: {
-    margin: 14,
-    minHeight: 46,
-    borderRadius: 8,
+    margin: 12,
+    height: 46,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#1e293b",
-    backgroundColor: "#111827",
+    borderColor: "#E9EDEF",
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingHorizontal: 12
+    paddingHorizontal: 14
   },
   searchInput: {
     flex: 1,
-    color: "#e5eefb",
+    color: "#111B21",
     fontSize: 15
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#E9EDEF",
+    marginLeft: 78
   },
   item: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 14
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#FFFFFF"
   },
   avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 8,
-    backgroundColor: "#164e63",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#DFE5E7",
     alignItems: "center",
     justifyContent: "center"
   },
   avatarText: {
-    color: "#e5eefb",
+    color: "#075E54",
     fontSize: 18,
     fontWeight: "800"
   },
@@ -167,12 +173,13 @@ const styles = StyleSheet.create({
     flex: 1
   },
   name: {
-    color: "#e5eefb",
+    color: "#111B21",
     fontSize: 16,
-    fontWeight: "800"
+    fontWeight: "700"
   },
   email: {
-    color: "#94a3b8",
-    marginTop: 4
+    color: "#667781",
+    marginTop: 3,
+    fontSize: 14
   }
 });
