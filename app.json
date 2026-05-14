@@ -44,12 +44,12 @@
       ]
     ],
     "extra": {
-      "firebaseApiKey": "REPLACE_WITH_YOUR_FIREBASE_API_KEY",
-      "firebaseAuthDomain": "REPLACE_WITH_YOUR_FIREBASE_AUTH_DOMAIN",
-      "firebaseProjectId": "REPLACE_WITH_YOUR_FIREBASE_PROJECT_ID",
-      "firebaseStorageBucket": "REPLACE_WITH_YOUR_FIREBASE_STORAGE_BUCKET",
-      "firebaseMessagingSenderId": "REPLACE_WITH_YOUR_FIREBASE_MESSAGING_SENDER_ID",
-      "firebaseAppId": "REPLACE_WITH_YOUR_FIREBASE_APP_ID"
+      "firebaseApiKey": "AIzaSyAC_IlSwQopePYb2xI5RyF-DI2_DCKU7zw",
+      "firebaseAuthDomain": "chatapp-971ae.firebaseapp.com",
+      "firebaseProjectId": "chatapp-971ae",
+      "firebaseStorageBucket": "chatapp-971ae.firebasestorage.app",
+      "firebaseMessagingSenderId": "999108386647",
+      "firebaseAppId": "1:999108386647:web:61ca21e27167c3b15c6812"
     }
   }
 }
