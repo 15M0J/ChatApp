@@ -1,4 +1,4 @@
-# Stage 5 Chat App
+# ChatApp
 
 Expo React Native + TypeScript chat app for the HNG Stage 5 mobile task.
 
