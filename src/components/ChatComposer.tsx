@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from "expo-audio";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 type Props = {
   disabled?: boolean;
@@ -14,9 +14,17 @@ type Props = {
   onCancelEdit: () => void;
 };
 
+type PendingAudio = { uri: string; durationMillis: number };
+
+function formatDuration(ms: number) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
 export default function ChatComposer({ disabled, uploading, editingText, onSendText, onChangeTyping, onPickMedia, onSendAudio, onCancelEdit }: Props) {
   const [text, setText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [pendingAudio, setPendingAudio] = useState<PendingAudio | null>(null);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -41,22 +49,71 @@ export default function ChatComposer({ disabled, uploading, editingText, onSendT
     onChangeTyping(false);
   }
 
-  async function toggleRecording() {
-    if (isRecording) {
+  async function startRecording() {
+    try {
+      const permission = await requestRecordingPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Permission required", "Microphone access is needed to send audio messages.");
+        return;
+      }
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync(RecordingPresets.HIGH_QUALITY);
+      recorder.record();
+      setIsRecording(true);
+    } catch {
+      Alert.alert("Couldn't start recording", "Please try again.");
+    }
+  }
+
+  async function stopRecording() {
+    try {
       const durationMillis = Math.round(recorder.currentTime * 1000);
       await recorder.stop();
+      // Reset audio session back to playback mode so other audio plays correctly
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
       setIsRecording(false);
       const uri = recorder.uri;
-      if (uri) onSendAudio(uri, durationMillis);
-      return;
+      if (uri) {
+        setPendingAudio({ uri, durationMillis });
+      } else {
+        Alert.alert("Recording failed", "No audio was captured. Please try again.");
+      }
+    } catch {
+      setIsRecording(false);
+      Alert.alert("Couldn't stop recording", "Please try again.");
     }
+  }
 
-    const permission = await requestRecordingPermissionsAsync();
-    if (!permission.granted) return;
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-    await recorder.prepareToRecordAsync();
-    recorder.record();
-    setIsRecording(true);
+  function confirmAudio() {
+    if (!pendingAudio) return;
+    onSendAudio(pendingAudio.uri, pendingAudio.durationMillis);
+    setPendingAudio(null);
+  }
+
+  function discardAudio() {
+    setPendingAudio(null);
+  }
+
+  const hasText = text.trim().length > 0;
+
+  // Audio confirmation row
+  if (pendingAudio) {
+    return (
+      <View style={styles.wrap}>
+        <TouchableOpacity style={styles.iconButton} onPress={discardAudio}>
+          <Ionicons name="trash-outline" size={22} color="#EA0038" />
+        </TouchableOpacity>
+        <View style={styles.audioPreview}>
+          <Ionicons name="mic" size={16} color="#667781" />
+          <Text style={styles.audioPreviewText}>
+            {formatDuration(pendingAudio.durationMillis)} — tap ✓ to send
+          </Text>
+        </View>
+        <TouchableOpacity style={[styles.roundButton, styles.sendButton]} onPress={confirmAudio}>
+          <Ionicons name="checkmark" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
@@ -66,31 +123,36 @@ export default function ChatComposer({ disabled, uploading, editingText, onSendT
           <Ionicons name="close" size={22} color="#667781" />
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity style={styles.iconButton} onPress={onPickMedia} disabled={disabled || uploading}>
+        <TouchableOpacity style={styles.iconButton} onPress={onPickMedia} disabled={disabled || uploading || isRecording}>
           {uploading ? <ActivityIndicator color="#25D366" /> : <Ionicons name="attach" size={24} color="#8696A0" />}
         </TouchableOpacity>
       )}
+
       <TextInput
         value={text}
         onChangeText={changeText}
-        placeholder={editingText !== null ? "Edit message" : "Message"}
-        placeholderTextColor="#8696A0"
-        style={styles.input}
+        placeholder={isRecording ? "Recording…" : editingText !== null ? "Edit message" : "Message"}
+        placeholderTextColor={isRecording ? "#EA0038" : "#8696A0"}
+        style={[styles.input, isRecording && styles.inputRecording]}
         multiline
+        editable={!isRecording}
       />
-      <TouchableOpacity
-        style={[styles.micButton, isRecording && styles.micRecording]}
-        onPress={isRecording || !text.trim() ? toggleRecording : submit}
-        disabled={disabled || uploading || editingText !== null}
-      >
-        {isRecording ? (
-          <Ionicons name="stop" size={20} color="#FFFFFF" />
-        ) : text.trim() ? (
+
+      {!hasText || isRecording ? (
+        <TouchableOpacity
+          style={[styles.roundButton, isRecording ? styles.stopButton : styles.micButton]}
+          onPress={isRecording ? stopRecording : startRecording}
+          disabled={disabled || uploading || editingText !== null}
+        >
+          <Ionicons name={isRecording ? "stop" : "mic"} size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+      ) : null}
+
+      {hasText && !isRecording ? (
+        <TouchableOpacity style={[styles.roundButton, styles.sendButton]} onPress={submit} disabled={disabled || uploading}>
           <Ionicons name="send" size={18} color="#FFFFFF" />
-        ) : (
-          <Ionicons name="mic" size={20} color="#FFFFFF" />
-        )}
-      </TouchableOpacity>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
@@ -123,15 +185,40 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E9EDEF"
   },
-  micButton: {
+  inputRecording: {
+    borderColor: "#EA0038",
+    color: "#EA0038"
+  },
+  audioPreview: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 42,
+    borderRadius: 21,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "#E9EDEF"
+  },
+  audioPreviewText: {
+    color: "#667781",
+    fontSize: 14
+  },
+  roundButton: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "#25D366",
     alignItems: "center",
     justifyContent: "center"
   },
-  micRecording: {
+  micButton: {
+    backgroundColor: "#25D366"
+  },
+  stopButton: {
     backgroundColor: "#EA0038"
+  },
+  sendButton: {
+    backgroundColor: "#25D366"
   }
 });

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { formatMillis } from "../utils/searchTokens";
 
 type Props = {
@@ -11,17 +11,22 @@ type Props = {
 };
 
 export default function AudioMessage({ uri, durationMillis, mine }: Props) {
-  const player = useAudioPlayer({ uri });
+  // Pass uri as a string, not an object — passing { uri } creates a new object
+  // every render which causes expo-audio to reinitialize the player continuously.
+  const player = useAudioPlayer(uri);
   const status = useAudioPlayerStatus(player);
   const [rate, setRate] = useState(1);
 
-  function togglePlay() {
+  async function togglePlay() {
     if (status.playing) {
       player.pause();
       return;
     }
+    // Ensure the audio session is in playback mode (may have been left in
+    // recording mode if the user just finished a recording).
+    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
     if (status.didJustFinish) {
-      player.seekTo(0);
+      await player.seekTo(0);
     }
     player.play();
   }
@@ -34,8 +39,16 @@ export default function AudioMessage({ uri, durationMillis, mine }: Props) {
 
   return (
     <View style={styles.row}>
-      <TouchableOpacity style={[styles.iconButton, mine ? styles.mineButton : styles.theirButton]} onPress={togglePlay}>
-        <Ionicons name={status.playing ? "pause" : "play"} size={18} color="#FFFFFF" />
+      <TouchableOpacity
+        style={[styles.iconButton, mine ? styles.mineButton : styles.theirButton]}
+        onPress={togglePlay}
+        disabled={!status.isLoaded && !status.playing}
+      >
+        {!status.isLoaded ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Ionicons name={status.playing ? "pause" : "play"} size={18} color="#FFFFFF" />
+        )}
       </TouchableOpacity>
       <View style={styles.wave}>
         <View style={[styles.bar, { height: 14 }]} />

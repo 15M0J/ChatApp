@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AnimatedDots from "../components/AnimatedDots";
 import AsyncState from "../components/AsyncState";
@@ -12,11 +12,13 @@ import {
   deleteMessageForMe,
   editMessage,
   listenMessages,
-  pickAndSendMedia,
+  pickMedia,
+  uploadAndSendMedia,
   sendAudioMessage,
   sendTextNow,
   setReaction,
-  updateTypingStatus
+  updateTypingStatus,
+  type PickedMedia
 } from "../services/firebaseChat";
 import { useChatStore } from "../store/chatStore";
 import type { ChatMessage } from "../types";
@@ -42,6 +44,7 @@ export default function ChatScreen() {
   const [uploading, setUploading] = useState(false);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [viewerMessage, setViewerMessage] = useState<ChatMessage | null>(null);
+  const [pendingMedia, setPendingMedia] = useState<PickedMedia | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   useEffect(() => {
@@ -139,11 +142,22 @@ export default function ChatScreen() {
     await updateTypingStatus(conversation.id, currentUser.uid, isTyping).catch(() => undefined);
   }
 
-  async function pickMedia() {
+  async function handlePickMedia() {
     if (!conversation || !currentUser) return;
+    try {
+      const picked = await pickMedia();
+      if (picked) setPendingMedia(picked);
+    } catch (err) {
+      Alert.alert("Couldn't open media", friendlyError(err));
+    }
+  }
+
+  async function confirmSendMedia() {
+    if (!conversation || !currentUser || !pendingMedia) return;
+    setPendingMedia(null);
     setUploading(true);
     try {
-      await pickAndSendMedia(conversation, currentUser);
+      await uploadAndSendMedia(conversation, currentUser, pendingMedia);
     } catch (err) {
       Alert.alert("Couldn't send media", friendlyError(err));
     } finally {
@@ -263,12 +277,38 @@ export default function ChatScreen() {
           editingText={editingMessage ? editingMessage.text ?? "" : null}
           onSendText={sendText}
           onChangeTyping={handleTyping}
-          onPickMedia={pickMedia}
+          onPickMedia={handlePickMedia}
           onSendAudio={sendAudio}
           onCancelEdit={() => setEditingMessage(null)}
         />
       </KeyboardAvoidingView>
       <MediaViewer message={viewerMessage} onClose={() => setViewerMessage(null)} />
+
+      <Modal visible={Boolean(pendingMedia)} transparent animationType="fade">
+        <View style={styles.previewOverlay}>
+          <Image
+            source={{ uri: pendingMedia?.localThumbnailUri ?? pendingMedia?.localUri }}
+            style={styles.previewImage}
+            resizeMode="contain"
+          />
+          {pendingMedia?.type === "video" ? (
+            <View style={styles.previewVideoTag}>
+              <Ionicons name="videocam" size={16} color="#FFFFFF" />
+              <Text style={styles.previewVideoText}>Video</Text>
+            </View>
+          ) : null}
+          <View style={styles.previewActions}>
+            <TouchableOpacity style={styles.previewCancel} onPress={() => setPendingMedia(null)}>
+              <Ionicons name="close" size={22} color="#111B21" />
+              <Text style={styles.previewCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.previewSend} onPress={confirmSendMedia}>
+              <Ionicons name="send" size={18} color="#FFFFFF" />
+              <Text style={styles.previewSendText}>Send</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -358,5 +398,62 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 10
+  },
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.88)",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 20
+  },
+  previewImage: {
+    width: "90%",
+    height: "65%",
+    borderRadius: 12
+  },
+  previewVideoTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16
+  },
+  previewVideoText: {
+    color: "#FFFFFF",
+    fontWeight: "600"
+  },
+  previewActions: {
+    flexDirection: "row",
+    gap: 16
+  },
+  previewCancel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 24
+  },
+  previewCancelText: {
+    color: "#111B21",
+    fontWeight: "700",
+    fontSize: 15
+  },
+  previewSend: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#25D366",
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 24
+  },
+  previewSendText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15
   }
 });

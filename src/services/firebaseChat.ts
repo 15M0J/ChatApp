@@ -282,7 +282,15 @@ export async function deleteMessageForEveryone(conversationId: string, messageId
   });
 }
 
-export async function pickAndSendMedia(conversation: Conversation, currentUser: UserProfile) {
+export type PickedMedia = {
+  localUri: string;
+  localThumbnailUri?: string;
+  contentType: string;
+  type: "image" | "video";
+  durationMillis?: number;
+};
+
+export async function pickMedia(): Promise<PickedMedia | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
     throw new Error("Gallery permission is required to send media.");
@@ -300,18 +308,31 @@ export async function pickAndSendMedia(conversation: Conversation, currentUser: 
   const isVideo = asset.type === "video";
   const processed = isVideo ? await compressVideo(asset.uri) : await compressImage(asset.uri);
   const thumbnail = isVideo ? await createVideoThumbnail(processed.uri) : processed.uri;
+
+  return {
+    localUri: processed.uri,
+    localThumbnailUri: thumbnail ?? undefined,
+    contentType: processed.contentType,
+    type: isVideo ? "video" : "image",
+    durationMillis: asset.duration ?? undefined
+  };
+}
+
+export async function uploadAndSendMedia(conversation: Conversation, currentUser: UserProfile, picked: PickedMedia) {
   const messageId = `${Date.now()}_${currentUser.uid}`;
-  const mediaUrl = await uploadLocalUri(conversation.id, messageId, processed.uri, processed.contentType);
-  const thumbnailUrl = thumbnail ? await uploadLocalUri(conversation.id, `${messageId}_thumb`, thumbnail, "image/jpeg") : undefined;
+  const mediaUrl = await uploadLocalUri(conversation.id, messageId, picked.localUri, picked.contentType);
+  const thumbnailUrl = picked.localThumbnailUri
+    ? await uploadLocalUri(conversation.id, `${messageId}_thumb`, picked.localThumbnailUri, "image/jpeg")
+    : undefined;
 
   await sendMediaMessage({
     conversation,
     currentUser,
     messageId,
-    type: isVideo ? "video" : "image",
+    type: picked.type,
     mediaUrl,
     thumbnailUrl,
-    durationMillis: asset.duration ?? undefined
+    durationMillis: picked.durationMillis
   });
 
   return messageId;
