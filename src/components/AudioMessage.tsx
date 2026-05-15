@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { formatMillis } from "../utils/searchTokens";
 
@@ -11,19 +11,23 @@ type Props = {
 };
 
 export default function AudioMessage({ uri, durationMillis, mine }: Props) {
-  // Pass uri as a string, not an object — passing { uri } creates a new object
-  // every render which causes expo-audio to reinitialize the player continuously.
-  const player = useAudioPlayer(uri);
+  const player = useAudioPlayer(uri ? { uri } : null, {
+    downloadFirst: true,
+    updateInterval: 250
+  });
   const status = useAudioPlayerStatus(player);
   const [rate, setRate] = useState(1);
 
+  useEffect(() => {
+    setRate(1);
+  }, [uri]);
+
   async function togglePlay() {
+    if (!uri || !status.isLoaded) return;
     if (status.playing) {
       player.pause();
       return;
     }
-    // Ensure the audio session is in playback mode (may have been left in
-    // recording mode if the user just finished a recording).
     await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
     if (status.didJustFinish) {
       await player.seekTo(0);
@@ -32,19 +36,23 @@ export default function AudioMessage({ uri, durationMillis, mine }: Props) {
   }
 
   function toggleRate() {
+    if (!status.isLoaded) return;
     const nextRate = rate === 1 ? 2 : 1;
     setRate(nextRate);
     player.setPlaybackRate(nextRate, "medium");
   }
+
+  const isReady = Boolean(uri) && status.isLoaded;
+  const showSpinner = Boolean(uri) && !status.isLoaded;
 
   return (
     <View style={styles.row}>
       <TouchableOpacity
         style={[styles.iconButton, mine ? styles.mineButton : styles.theirButton]}
         onPress={togglePlay}
-        disabled={!status.isLoaded && !status.playing}
+        disabled={!isReady}
       >
-        {!status.isLoaded ? (
+        {showSpinner ? (
           <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
           <Ionicons name={status.playing ? "pause" : "play"} size={18} color="#FFFFFF" />
@@ -58,9 +66,11 @@ export default function AudioMessage({ uri, durationMillis, mine }: Props) {
         <View style={[styles.bar, { height: 16 }]} />
       </View>
       <Text style={styles.time}>{formatMillis(durationMillis)}</Text>
-      <TouchableOpacity style={styles.rateButton} onPress={toggleRate}>
-        <Text style={styles.rateText}>{rate}x</Text>
-      </TouchableOpacity>
+      {isReady ? (
+        <TouchableOpacity style={styles.rateButton} onPress={toggleRate}>
+          <Text style={styles.rateText}>{rate}x</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }

@@ -161,6 +161,28 @@ export function listenMessages(
   );
 }
 
+export async function markConversationsDelivered(conversationIds: string[], currentUid: string) {
+  const batch = writeBatch(db);
+  let count = 0;
+
+  await Promise.all(
+    conversationIds.map(async (conversationId) => {
+      const snap = await getDocs(
+        query(collection(db, "conversations", conversationId, "messages"), orderBy("createdAt", "desc"), limit(30))
+      );
+      snap.docs.forEach((d) => {
+        const data = d.data();
+        if (data.senderId === currentUid) return;
+        if ((data.statusByUser?.[currentUid] ?? "sent") !== "sent") return;
+        batch.update(d.ref, { [`statusByUser.${currentUid}`]: "delivered", updatedAt: serverTimestamp() });
+        count++;
+      });
+    })
+  );
+
+  if (count > 0) await batch.commit();
+}
+
 export async function markMessages(conversationId: string, currentUid: string, messages: ChatMessage[], status: ReceiptStatus) {
   const batch = writeBatch(db);
   let count = 0;
@@ -340,7 +362,7 @@ export async function uploadAndSendMedia(conversation: Conversation, currentUser
 
 export async function sendAudioMessage(conversation: Conversation, currentUser: UserProfile, uri: string, durationMillis?: number) {
   const messageId = `${Date.now()}_${currentUser.uid}_audio`;
-  const mediaUrl = await uploadLocalUri(conversation.id, messageId, uri, "audio/m4a");
+  const mediaUrl = await uploadLocalUri(conversation.id, `${messageId}.m4a`, uri, "audio/mp4");
   await sendMediaMessage({
     conversation,
     currentUser,
@@ -411,15 +433,9 @@ async function createVideoThumbnail(uri: string) {
 }
 
 async function uploadLocalUri(conversationId: string, fileName: string, uri: string, contentType: string) {
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.onload = () => resolve(xhr.response);
-    xhr.onerror = () => reject(new Error("Unable to read local file for upload."));
-    xhr.responseType = "blob";
-    xhr.open("GET", uri, true);
-    xhr.send(null);
-  });
-
+  const response = await fetch(uri);
+  if (!response.ok) throw new Error("Unable to read local file for upload.");
+  const blob = await response.blob();
   const mediaRef = ref(storage, `chatMedia/${conversationId}/${fileName}`);
   await uploadBytes(mediaRef, blob, { contentType });
   return getDownloadURL(mediaRef);

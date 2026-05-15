@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncState from "../components/AsyncState";
-import { listenConversations, logoutUser } from "../services/firebaseChat";
+import { listenConversations, logoutUser, markConversationsDelivered } from "../services/firebaseChat";
 import { useChatStore } from "../store/chatStore";
 import { friendlyError } from "../utils/friendlyError";
 import type { Conversation } from "../types";
@@ -20,6 +20,7 @@ export default function ConversationListScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const selectedConversationId = useChatStore((state) => state.selectedConversationId);
 
   useEffect(() => {
     if (!currentUser) return undefined;
@@ -31,6 +32,12 @@ export default function ConversationListScreen() {
         setLoading(false);
         setRefreshing(false);
         setError(null);
+        const unopen = items
+          .map((c) => c.id)
+          .filter((id) => id !== selectedConversationId);
+        if (unopen.length > 0) {
+          markConversationsDelivered(unopen, currentUser.uid).catch(() => undefined);
+        }
       },
       (err) => {
         setError(friendlyError(err));
