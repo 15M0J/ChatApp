@@ -20,6 +20,7 @@ export type Conversation = {
   typing?: Record<string, boolean>;
   createdAt?: number;
   updatedAt?: number;
+  isDraft?: boolean;
 };
 
 export type ChatMessage = {

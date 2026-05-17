@@ -1,9 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncState from "../components/AsyncState";
-import { listenConversations, logoutUser, markConversationsDelivered } from "../services/firebaseChat";
+import { fetchConversations, listenConversations, logoutUser, markConversationsDelivered } from "../services/firebaseChat";
 import { useChatStore } from "../store/chatStore";
 import { friendlyError } from "../utils/friendlyError";
 import type { Conversation } from "../types";
@@ -21,6 +21,7 @@ export default function ConversationListScreen() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const selectedConversationId = useChatStore((state) => state.selectedConversationId);
+  const visibleConversations = useMemo(() => conversations.filter((conversation) => !conversation.isDraft), [conversations]);
 
   useEffect(() => {
     if (!currentUser) return undefined;
@@ -52,6 +53,26 @@ export default function ConversationListScreen() {
       { text: "Cancel", style: "cancel" },
       { text: "Sign out", style: "destructive", onPress: async () => { await logoutUser(); clearSession(); } }
     ]);
+  }
+
+  async function refreshConversations() {
+    if (!currentUser || refreshing) return;
+    setRefreshing(true);
+    try {
+      const items = await fetchConversations(currentUser.uid);
+      setConversations(items);
+      setError(null);
+      const unopen = items
+        .map((conversation) => conversation.id)
+        .filter((id) => id !== selectedConversationId);
+      if (unopen.length > 0) {
+        await markConversationsDelivered(unopen, currentUser.uid);
+      }
+    } catch (err) {
+      setError(friendlyError(err));
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   function renderItem({ item }: { item: Conversation }) {
@@ -94,16 +115,16 @@ export default function ConversationListScreen() {
       <AsyncState
         loading={loading}
         error={error}
-        empty={!loading && conversations.length === 0}
+        empty={!loading && visibleConversations.length === 0}
         emptyTitle="No conversations yet"
         emptyBody="Start a new chat by searching for another user's email or display name."
       />
-      {!loading && !error && conversations.length > 0 ? (
+      {!loading && !error && visibleConversations.length > 0 ? (
         <FlatList
-          data={conversations}
+          data={visibleConversations}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} tintColor="#25D366" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshConversations} tintColor="#25D366" />}
           contentContainerStyle={styles.list}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />

@@ -32,9 +32,11 @@ export default function ChatScreen() {
   const isOnline = useChatStore((state) => state.isOnline);
   const enqueueMessage = useChatStore((state) => state.enqueueMessage);
   const pendingMessages = useChatStore((state) => state.pendingMessages);
+  const upsertConversation = useChatStore((state) => state.upsertConversation);
   const conversation = conversations.find((item) => item.id === selectedConversationId);
   const otherUid = conversation?.members.find((uid) => uid !== currentUser?.uid);
   const other = otherUid ? conversation?.memberInfo[otherUid] : undefined;
+  const isDraftConversation = Boolean(conversation?.isDraft);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,7 @@ export default function ChatScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [searching, setSearching] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [sendingText, setSendingText] = useState(false);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [viewerMessage, setViewerMessage] = useState<ChatMessage | null>(null);
   const [pendingMedia, setPendingMedia] = useState<PickedMedia | null>(null);
@@ -49,6 +52,13 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (!selectedConversationId || !currentUser) return undefined;
+    if (isDraftConversation) {
+      setMessages([]);
+      setLoading(false);
+      setError(null);
+      return undefined;
+    }
+
     setLoading(true);
     return listenMessages(
       selectedConversationId,
@@ -64,7 +74,7 @@ export default function ChatScreen() {
         setLoading(false);
       }
     );
-  }, [currentUser, selectedConversationId]);
+  }, [currentUser, isDraftConversation, selectedConversationId]);
 
   useEffect(() => {
     setSearching(Boolean(searchTerm.trim()));
@@ -112,10 +122,16 @@ export default function ChatScreen() {
   const otherTyping = Boolean(otherUid && conversation?.typing?.[otherUid]);
 
   async function sendText(text: string) {
-    if (!currentUser || !conversation) return;
+    if (!currentUser || !conversation || sendingText) return;
+    setSendingText(true);
+
     if (editingMessage) {
-      await editMessage(conversation.id, editingMessage.id, text);
-      setEditingMessage(null);
+      try {
+        await editMessage(conversation.id, editingMessage.id, text);
+        setEditingMessage(null);
+      } finally {
+        setSendingText(false);
+      }
       return;
     }
 
@@ -130,11 +146,45 @@ export default function ChatScreen() {
 
     if (!isOnline) {
       enqueueMessage(pending);
+      setSendingText(false);
       return;
     }
 
-    await sendTextNow(pending, conversation.members);
-    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+    try {
+      await sendTextNow(pending, conversation);
+      setMessages((items) => {
+        if (items.some((item) => item.id === pending.clientId)) return items;
+        return [
+          ...items,
+          {
+            id: pending.clientId,
+            conversationId: conversation.id,
+            senderId: currentUser.uid,
+            senderName: currentUser.displayName,
+            type: "text",
+            text,
+            statusByUser: {},
+            reactions: {},
+            deletedFor: [],
+            deletedForEveryone: false,
+            createdAt: pending.queuedAt,
+            updatedAt: pending.queuedAt
+          }
+        ];
+      });
+      upsertConversation({
+        ...conversation,
+        isDraft: false,
+        lastMessageText: text,
+        lastMessageAt: pending.queuedAt,
+        updatedAt: pending.queuedAt
+      });
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+    } catch (err) {
+      Alert.alert("Couldn't send message", friendlyError(err));
+    } finally {
+      setSendingText(false);
+    }
   }
 
   async function handleTyping(isTyping: boolean) {
@@ -158,6 +208,14 @@ export default function ChatScreen() {
     setUploading(true);
     try {
       await uploadAndSendMedia(conversation, currentUser, pendingMedia);
+      const now = Date.now();
+      upsertConversation({
+        ...conversation,
+        isDraft: false,
+        lastMessageText: pendingMedia.type === "video" ? "Video message" : "Image message",
+        lastMessageAt: now,
+        updatedAt: now
+      });
     } catch (err) {
       Alert.alert("Couldn't send media", friendlyError(err));
     } finally {
@@ -170,6 +228,14 @@ export default function ChatScreen() {
     setUploading(true);
     try {
       await sendAudioMessage(conversation, currentUser, uri, durationMillis);
+      const now = Date.now();
+      upsertConversation({
+        ...conversation,
+        isDraft: false,
+        lastMessageText: "Audio message",
+        lastMessageAt: now,
+        updatedAt: now
+      });
     } catch (err) {
       Alert.alert("Couldn't send audio", friendlyError(err));
     } finally {
@@ -223,56 +289,68 @@ export default function ChatScreen() {
           </View>
         ) : null}
 
-        <AsyncState
-          loading={loading || searching}
-          error={error}
-          empty={!loading && !error && visibleMessages.length === 0}
-          emptyTitle={searchTerm ? "No matching messages" : "No messages yet"}
-          emptyBody={searchTerm ? "Try another search term." : "Send the first message to start the conversation."}
-        />
-
-        {!loading && !error && visibleMessages.length > 0 ? (
-          <FlatList
-            ref={listRef}
-            data={visibleMessages}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item, index }) => {
-              const prev = index > 0 ? visibleMessages[index - 1] : null;
-              const next = index < visibleMessages.length - 1 ? visibleMessages[index + 1] : null;
-              const isFirst = !prev || prev.senderId !== item.senderId;
-              const isLast = !next || next.senderId !== item.senderId;
-              return (
-                <MessageBubble
-                  message={item}
-                  currentUid={currentUser?.uid ?? ""}
-                  otherUid={otherUid}
-                  searchTerm={searchTerm}
-                  isFirst={isFirst}
-                  isLast={isLast}
-                  onReact={(message, emoji) => currentUser && setReaction(message.conversationId, message.id, currentUser.uid, emoji)}
-                  onEdit={setEditingMessage}
-                  onDeleteForMe={(message) => currentUser && deleteMessageForMe(message.conversationId, message.id, currentUser.uid)}
-                  onDeleteForEveryone={confirmDeleteForEveryone}
-                  onOpenMedia={setViewerMessage}
-                />
-              );
-            }}
-            ListFooterComponent={
-              otherTyping ? (
-                <View style={styles.typingRow}>
-                  <View style={styles.typingBubble}>
-                    <AnimatedDots />
-                  </View>
-                </View>
-              ) : null
-            }
-            contentContainerStyle={styles.messages}
-            style={styles.messageList}
+        <View style={styles.messageArea}>
+          <AsyncState
+            loading={loading || searching}
+            error={error}
+            empty={!loading && !error && visibleMessages.length === 0 && !isDraftConversation}
+            emptyTitle={searchTerm ? "No matching messages" : "No messages yet"}
+            emptyBody={searchTerm ? "Try another search term." : "Send the first message to start the conversation."}
           />
-        ) : null}
+
+          {!loading && !error && visibleMessages.length === 0 && isDraftConversation ? (
+            <View style={styles.draftEmpty}>
+              <View style={styles.draftIcon}>
+                <Ionicons name="chatbubble-ellipses-outline" size={32} color="#075E54" />
+              </View>
+              <Text style={styles.draftTitle}>Start a chat with {other?.displayName ?? "this user"}</Text>
+              <Text style={styles.draftBody}>This chat will appear for them after your first message.</Text>
+            </View>
+          ) : null}
+
+          {!loading && !error && visibleMessages.length > 0 ? (
+            <FlatList
+              ref={listRef}
+              data={visibleMessages}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item, index }) => {
+                const prev = index > 0 ? visibleMessages[index - 1] : null;
+                const next = index < visibleMessages.length - 1 ? visibleMessages[index + 1] : null;
+                const isFirst = !prev || prev.senderId !== item.senderId;
+                const isLast = !next || next.senderId !== item.senderId;
+                return (
+                  <MessageBubble
+                    message={item}
+                    currentUid={currentUser?.uid ?? ""}
+                    otherUid={otherUid}
+                    searchTerm={searchTerm}
+                    isFirst={isFirst}
+                    isLast={isLast}
+                    onReact={(message, emoji) => currentUser && setReaction(message.conversationId, message.id, currentUser.uid, emoji)}
+                    onEdit={setEditingMessage}
+                    onDeleteForMe={(message) => currentUser && deleteMessageForMe(message.conversationId, message.id, currentUser.uid)}
+                    onDeleteForEveryone={confirmDeleteForEveryone}
+                    onOpenMedia={setViewerMessage}
+                  />
+                );
+              }}
+              ListFooterComponent={
+                otherTyping ? (
+                  <View style={styles.typingRow}>
+                    <View style={styles.typingBubble}>
+                      <AnimatedDots />
+                    </View>
+                  </View>
+                ) : null
+              }
+              contentContainerStyle={styles.messages}
+              style={styles.messageList}
+            />
+          ) : null}
+        </View>
 
         <ChatComposer
-          disabled={!conversation || !currentUser}
+          disabled={!conversation || !currentUser || sendingText}
           uploading={uploading}
           editingText={editingMessage ? editingMessage.text ?? "" : null}
           onSendText={sendText}
@@ -380,12 +458,47 @@ const styles = StyleSheet.create({
     color: "#111B21",
     fontSize: 14
   },
-  messageList: {
+  messageArea: {
+    flex: 1,
     backgroundColor: "#E8EDD4"
+  },
+  messageList: {
+    flex: 1
   },
   messages: {
     paddingTop: 8,
     paddingBottom: 10
+  },
+  draftEmpty: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+    paddingBottom: 24
+  },
+  draftIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+    backgroundColor: "rgba(255,255,255,0.72)",
+    borderWidth: 1,
+    borderColor: "rgba(7,94,84,0.12)"
+  },
+  draftTitle: {
+    color: "#111B21",
+    fontSize: 19,
+    fontWeight: "800",
+    textAlign: "center"
+  },
+  draftBody: {
+    color: "#667781",
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 8,
+    textAlign: "center"
   },
   typingRow: {
     paddingHorizontal: 12,

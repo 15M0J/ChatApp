@@ -14,6 +14,7 @@ type ChatStore = {
   setCurrentUser: (user: UserProfile | null) => void;
   setSelectedConversationId: (conversationId: string | null) => void;
   setConversations: (conversations: Conversation[]) => void;
+  upsertConversation: (conversation: Conversation) => void;
   setOnline: (isOnline: boolean) => void;
   enqueueMessage: (message: PendingOutboundMessage) => void;
   removePendingMessage: (clientId: string) => void;
@@ -33,6 +34,17 @@ export const useChatStore = create<ChatStore>()(
       setCurrentUser: (currentUser) => set({ currentUser, screen: currentUser ? "conversations" : "auth" }),
       setSelectedConversationId: (selectedConversationId) => set({ selectedConversationId, screen: selectedConversationId ? "chat" : "conversations" }),
       setConversations: (conversations) => set({ conversations }),
+      upsertConversation: (conversation) =>
+        set((state) => {
+          const existingIndex = state.conversations.findIndex((item) => item.id === conversation.id);
+          if (existingIndex === -1) {
+            return { conversations: [conversation, ...state.conversations] };
+          }
+
+          const conversations = [...state.conversations];
+          conversations[existingIndex] = { ...conversations[existingIndex], ...conversation };
+          return { conversations };
+        }),
       setOnline: (isOnline) => set({ isOnline }),
       enqueueMessage: (message) =>
         set((state) => ({

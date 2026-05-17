@@ -12,6 +12,7 @@ export default function NewChatScreen() {
   const currentUser = useChatStore((state) => state.currentUser);
   const setScreen = useChatStore((state) => state.setScreen);
   const setSelectedConversationId = useChatStore((state) => state.setSelectedConversationId);
+  const upsertConversation = useChatStore((state) => state.upsertConversation);
   const [term, setTerm] = useState("");
   const [results, setResults] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,6 +45,29 @@ export default function NewChatScreen() {
     setLoading(true);
     try {
       const conversationId = await createConversation(currentUser, profile);
+      const now = Date.now();
+      upsertConversation({
+        id: conversationId,
+        members: [currentUser.uid, profile.uid].sort(),
+        memberInfo: {
+          [currentUser.uid]: {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            displayName: currentUser.displayName
+          },
+          [profile.uid]: {
+            uid: profile.uid,
+            email: profile.email,
+            displayName: profile.displayName
+          }
+        },
+        typing: {},
+        lastMessageText: "New chat",
+        lastMessageAt: now,
+        createdAt: now,
+        updatedAt: now,
+        isDraft: true
+      });
       setSelectedConversationId(conversationId);
     } catch (err) {
       setError(friendlyError(err));

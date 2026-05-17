@@ -18,6 +18,7 @@ export default function App() {
   const setCurrentUser = useChatStore((state) => state.setCurrentUser);
   const setOnline = useChatStore((state) => state.setOnline);
   const removePendingMessage = useChatStore((state) => state.removePendingMessage);
+  const upsertConversation = useChatStore((state) => state.upsertConversation);
   const flushingRef = useRef(false);
 
   useEffect(() => listenAuth(setCurrentUser), [setCurrentUser]);
@@ -37,13 +38,20 @@ export default function App() {
       pendingMessages.map(async (message) => {
         const conversation = conversations.find((item) => item.id === message.conversationId);
         if (!conversation) return;
-        await sendTextNow(message, conversation.members);
+        await sendTextNow(message, conversation);
+        upsertConversation({
+          ...conversation,
+          isDraft: false,
+          lastMessageText: message.text,
+          lastMessageAt: message.queuedAt,
+          updatedAt: message.queuedAt
+        });
         removePendingMessage(message.clientId);
       })
     ).finally(() => {
       flushingRef.current = false;
     });
-  }, [conversations, currentUser, isOnline, pendingMessages, removePendingMessage]);
+  }, [conversations, currentUser, isOnline, pendingMessages, removePendingMessage, upsertConversation]);
 
   return (
     <SafeAreaProvider>

@@ -141,6 +141,12 @@ export function listenConversations(uid: string, onNext: (items: Conversation[])
   );
 }
 
+export async function fetchConversations(uid: string) {
+  const conversationsQuery = query(collection(db, "conversations"), where("members", "array-contains", uid), orderBy("updatedAt", "desc"));
+  const snapshot = await getDocs(conversationsQuery);
+  return snapshot.docs.map((item) => mapConversation(item.id, item.data()));
+}
+
 export function listenMessages(
   conversationId: string,
   currentUid: string,
@@ -212,39 +218,14 @@ export async function searchUsers(term: string, currentUid: string) {
 
 export async function createConversation(currentUser: UserProfile, otherUser: UserProfile) {
   const members = [currentUser.uid, otherUser.uid].sort();
-  const id = members.join("_");
-  const conversationRef = doc(db, "conversations", id);
-  const existing = await getDoc(conversationRef);
-
-  if (!existing.exists()) {
-    await setDoc(conversationRef, {
-      members,
-      memberInfo: {
-        [currentUser.uid]: {
-          uid: currentUser.uid,
-          email: currentUser.email,
-          displayName: currentUser.displayName
-        },
-        [otherUser.uid]: {
-          uid: otherUser.uid,
-          email: otherUser.email,
-          displayName: otherUser.displayName
-        }
-      },
-      typing: {},
-      lastMessageText: "New chat",
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      lastMessageAt: serverTimestamp()
-    });
-  }
-
-  return id;
+  return members.join("_");
 }
 
-export async function sendTextNow(message: PendingOutboundMessage, members: string[]) {
+export async function sendTextNow(message: PendingOutboundMessage, conversation: Conversation) {
+  await ensureConversationDoc(conversation);
+
   const messageRef = doc(db, "conversations", message.conversationId, "messages", message.clientId);
-  const statusByUser = members.reduce<Record<string, ReceiptStatus>>((acc, uid) => {
+  const statusByUser = conversation.members.reduce<Record<string, ReceiptStatus>>((acc, uid) => {
     acc[uid] = uid === message.senderId ? "seen" : "sent";
     return acc;
   }, {});
@@ -388,6 +369,8 @@ async function sendMediaMessage(input: {
   }, {});
   const messageText = input.type === "audio" ? "Audio message" : input.type === "video" ? "Video message" : "Image message";
 
+  await ensureConversationDoc(input.conversation);
+
   await setDoc(doc(db, "conversations", input.conversation.id, "messages", input.messageId), {
     conversationId: input.conversation.id,
     senderId: input.currentUser.uid,
@@ -406,6 +389,20 @@ async function sendMediaMessage(input: {
   });
 
   await updateConversationLastMessage(input.conversation.id, messageText);
+}
+
+async function ensureConversationDoc(conversation: Conversation) {
+  const conversationRef = doc(db, "conversations", conversation.id);
+  const existing = await getDoc(conversationRef);
+  if (existing.exists()) return;
+
+  await setDoc(conversationRef, {
+    members: conversation.members,
+    memberInfo: conversation.memberInfo,
+    typing: {},
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
 }
 
 async function compressImage(uri: string) {

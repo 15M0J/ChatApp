@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from "expo-audio";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
   disabled?: boolean;
@@ -27,6 +28,8 @@ export default function ChatComposer({ disabled, uploading, editingText, onSendT
   const [pendingAudio, setPendingAudio] = useState<PendingAudio | null>(null);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const insets = useSafeAreaInsets();
+  const wrapStyle = [styles.wrap, { paddingBottom: Math.max(insets.bottom, 8) }];
 
   useEffect(() => {
     if (typeof editingText === "string") {
@@ -99,7 +102,7 @@ export default function ChatComposer({ disabled, uploading, editingText, onSendT
   // Audio confirmation row
   if (pendingAudio) {
     return (
-      <View style={styles.wrap}>
+      <View style={wrapStyle}>
         <TouchableOpacity style={styles.iconButton} onPress={discardAudio}>
           <Ionicons name="trash-outline" size={22} color="#EA0038" />
         </TouchableOpacity>
@@ -117,7 +120,7 @@ export default function ChatComposer({ disabled, uploading, editingText, onSendT
   }
 
   return (
-    <View style={styles.wrap}>
+    <View style={wrapStyle}>
       {editingText !== null ? (
         <TouchableOpacity style={styles.iconButton} onPress={onCancelEdit}>
           <Ionicons name="close" size={22} color="#667781" />
